@@ -79,12 +79,27 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_dark_mode -> {
+                toggleDarkMode()
+                true
+            }
             R.id.action_settings -> {
                 showApiKeyDialog()
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+    
+    private fun toggleDarkMode() {
+        val currentMode = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        val newMode = if (currentMode == android.content.res.Configuration.UI_MODE_NIGHT_YES) {
+            android.app.UiModeManager.MODE_NIGHT_NO
+        } else {
+            android.app.UiModeManager.MODE_NIGHT_YES
+        }
+        val uiModeManager = getSystemService(android.content.Context.UI_MODE_SERVICE) as android.app.UiModeManager
+        uiModeManager.setApplicationNightMode(newMode)
     }
     
     private fun selectImage() {
