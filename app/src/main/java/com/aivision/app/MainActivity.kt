@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private var selectedImageUri: Uri? = null
+    private var selectedImageUris: MutableList<Uri> = mutableListOf()
     private val prefs by lazy { getSharedPreferences("app_prefs", MODE_PRIVATE) }
     private var timerJob: kotlinx.coroutines.Job? = null
     private var startTime: Long = 0
@@ -44,11 +44,27 @@ class MainActivity : AppCompatActivity() {
     
     private val pickImage = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri ->
-                selectedImageUri = uri
-                binding.imageView.setImageURI(uri)
-                binding.placeholderText.visibility = View.GONE
-                binding.analyzeButton.isEnabled = true
+            result.data?.let { data ->
+                selectedImageUris.clear()
+                
+                if (data.clipData != null) {
+                    // Multiple images
+                    val count = data.clipData!!.itemCount
+                    for (i in 0 until count) {
+                        selectedImageUris.add(data.clipData!!.getItemAt(i).uri)
+                    }
+                } else if (data.data != null) {
+                    // Single image
+                    selectedImageUris.add(data.data!!)
+                }
+                
+                if (selectedImageUris.isNotEmpty()) {
+                    binding.imageView.setImageURI(selectedImageUris[0])
+                    binding.placeholderText.visibility = View.GONE
+                    binding.imageCountText.visibility = View.VISIBLE
+                    binding.imageCountText.text = "${selectedImageUris.size} image${if (selectedImageUris.size > 1) "s" else ""} selected"
+                    binding.analyzeButton.isEnabled = true
+                }
             }
         }
     }
@@ -69,11 +85,13 @@ class MainActivity : AppCompatActivity() {
         
         // Restore state
         savedInstanceState?.let {
-            val imageUriString = it.getString("imageUri")
-            if (imageUriString != null) {
-                selectedImageUri = Uri.parse(imageUriString)
-                binding.imageView.setImageURI(selectedImageUri)
+            val imageUriStrings = it.getStringArrayList("imageUris")
+            if (imageUriStrings != null && imageUriStrings.isNotEmpty()) {
+                selectedImageUris = imageUriStrings.map { str -> Uri.parse(str) }.toMutableList()
+                binding.imageView.setImageURI(selectedImageUris[0])
                 binding.placeholderText.visibility = View.GONE
+                binding.imageCountText.visibility = View.VISIBLE
+                binding.imageCountText.text = "${selectedImageUris.size} image${if (selectedImageUris.size > 1) "s" else ""} selected"
                 binding.analyzeButton.isEnabled = true
             }
             val resultText = it.getString("resultText")
@@ -88,8 +106,9 @@ class MainActivity : AppCompatActivity() {
                 binding.analyzeButton.isEnabled = false
                 startTime = it.getLong("startTime", System.currentTimeMillis())
                 startTimer()
-                // Resume analysis
-                selectedImageUri?.let { uri -> resumeAnalysis(uri) }
+                if (selectedImageUris.isNotEmpty()) {
+                    resumeAnalysis(selectedImageUris)
+                }
             }
         }
         
@@ -114,7 +133,9 @@ class MainActivity : AppCompatActivity() {
     
     override fun onSaveInstanceState(outState: android.os.Bundle) {
         super.onSaveInstanceState(outState)
-        selectedImageUri?.let { outState.putString("imageUri", it.toString()) }
+        if (selectedImageUris.isNotEmpty()) {
+            outState.putStringArrayList("imageUris", ArrayList(selectedImageUris.map { it.toString() }))
+        }
         if (binding.resultCard.visibility == View.VISIBLE) {
             outState.putString("resultText", binding.resultText.text.toString())
         }
@@ -163,14 +184,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun resumeAnalysis(uri: Uri) {
+    private fun resumeAnalysis(uris: List<Uri>) {
         val apiKey = prefs.getString("api_key", "") ?: return
         
         analysisJob = CoroutineScope(Dispatchers.IO).launch {
             try {
-                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
-                val base64 = bitmapToBase64(bitmap)
-                val result = callPollinationsAPI(apiKey, base64)
+                val customPrompt = binding.promptInput.text?.toString() ?: ""
+                val result = analyzeMultipleImages(apiKey, uris, customPrompt)
                 
                 withContext(Dispatchers.Main) {
                     timerJob?.cancel()
@@ -239,6 +259,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun selectImage() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         pickImage.launch(intent)
     }
     
@@ -269,53 +290,51 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
-        selectedImageUri?.let { uri ->
-            binding.progressBar.visibility = View.VISIBLE
-            binding.timerText.visibility = View.VISIBLE
-            binding.analyzeButton.isEnabled = false
-            binding.resultCard.visibility = View.GONE
-            
-            startTime = System.currentTimeMillis()
-            startTimer()
-            
-            analysisJob = CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
-                    val base64 = bitmapToBase64(bitmap)
-                    val customPrompt = binding.promptInput.text?.toString() ?: ""
-                    val result = callPollinationsAPI(apiKey, base64, customPrompt)
+        if (selectedImageUris.isEmpty()) return
+        
+        binding.progressBar.visibility = View.VISIBLE
+        binding.timerText.visibility = View.VISIBLE
+        binding.analyzeButton.isEnabled = false
+        binding.resultCard.visibility = View.GONE
+        
+        startTime = System.currentTimeMillis()
+        startTimer()
+        
+        analysisJob = CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val customPrompt = binding.promptInput.text?.toString() ?: ""
+                val result = analyzeMultipleImages(apiKey, selectedImageUris, customPrompt)
+                
+                withContext(Dispatchers.Main) {
+                    timerJob?.cancel()
+                    binding.progressBar.visibility = View.GONE
+                    binding.timerText.visibility = View.GONE
+                    binding.analyzeButton.isEnabled = true
+                    binding.resultText.text = result
+                    binding.resultCard.visibility = View.VISIBLE
                     
-                    withContext(Dispatchers.Main) {
-                        timerJob?.cancel()
-                        binding.progressBar.visibility = View.GONE
-                        binding.timerText.visibility = View.GONE
-                        binding.analyzeButton.isEnabled = true
-                        binding.resultText.text = result
-                        binding.resultCard.visibility = View.VISIBLE
-                        
-                        val snackbar = com.google.android.material.snackbar.Snackbar.make(
-                            binding.root,
-                            "✓ Analysis complete!",
-                            com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
-                        )
-                        val view = snackbar.view
-                        val params = view.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
-                        params.gravity = android.view.Gravity.TOP
-                        params.topMargin = binding.toolbar.height + 16
-                        view.layoutParams = params
-                        snackbar.show()
-                        
-                        kotlinx.coroutines.delay(1500)
-                        showBalanceNotification(apiKey)
-                    }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        timerJob?.cancel()
-                        binding.progressBar.visibility = View.GONE
-                        binding.timerText.visibility = View.GONE
-                        binding.analyzeButton.isEnabled = true
-                        Toast.makeText(this@MainActivity, "${getString(R.string.error_occurred)}: ${e.message}", Toast.LENGTH_LONG).show()
-                    }
+                    val snackbar = com.google.android.material.snackbar.Snackbar.make(
+                        binding.root,
+                        "✓ Analysis complete!",
+                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                    )
+                    val view = snackbar.view
+                    val params = view.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
+                    params.gravity = android.view.Gravity.TOP
+                    params.topMargin = binding.toolbar.height + 16
+                    view.layoutParams = params
+                    snackbar.show()
+                    
+                    kotlinx.coroutines.delay(1500)
+                    showBalanceNotification(apiKey)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    timerJob?.cancel()
+                    binding.progressBar.visibility = View.GONE
+                    binding.timerText.visibility = View.GONE
+                    binding.analyzeButton.isEnabled = true
+                    Toast.makeText(this@MainActivity, "${getString(R.string.error_occurred)}: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -352,6 +371,24 @@ class MainActivity : AppCompatActivity() {
         val outputStream = ByteArrayOutputStream()
         resized.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
         return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+    }
+    
+    private fun analyzeMultipleImages(apiKey: String, uris: List<Uri>, customPrompt: String): String {
+        if (uris.size == 1) {
+            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uris[0])
+            val base64 = bitmapToBase64(bitmap)
+            return callPollinationsAPI(apiKey, base64, customPrompt)
+        }
+        
+        val results = StringBuilder()
+        uris.forEachIndexed { index, uri ->
+            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
+            val base64 = bitmapToBase64(bitmap)
+            val prompt = if (customPrompt.isEmpty()) "Describe the image" else customPrompt
+            val result = callPollinationsAPI(apiKey, base64, prompt)
+            results.append("Image ${index + 1}:\n$result\n\n")
+        }
+        return results.toString().trim()
     }
     
     private fun callPollinationsAPI(apiKey: String, base64Image: String, customPrompt: String = ""): String {
