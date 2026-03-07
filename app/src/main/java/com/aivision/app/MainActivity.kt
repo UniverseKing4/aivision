@@ -59,10 +59,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 if (selectedImageUris.isNotEmpty()) {
-                    binding.imageView.setImageURI(selectedImageUris[0])
-                    binding.placeholderText.visibility = View.GONE
-                    binding.imageCountText.visibility = View.VISIBLE
-                    binding.imageCountText.text = "${selectedImageUris.size} image${if (selectedImageUris.size > 1) "s" else ""} selected"
+                    updateImageDisplay()
                     binding.analyzeButton.isEnabled = true
                 }
             }
@@ -88,10 +85,7 @@ class MainActivity : AppCompatActivity() {
             val imageUriStrings = it.getStringArrayList("imageUris")
             if (imageUriStrings != null && imageUriStrings.isNotEmpty()) {
                 selectedImageUris = imageUriStrings.map { str -> Uri.parse(str) }.toMutableList()
-                binding.imageView.setImageURI(selectedImageUris[0])
-                binding.placeholderText.visibility = View.GONE
-                binding.imageCountText.visibility = View.VISIBLE
-                binding.imageCountText.text = "${selectedImageUris.size} image${if (selectedImageUris.size > 1) "s" else ""} selected"
+                updateImageDisplay()
                 binding.analyzeButton.isEnabled = true
             }
             val resultText = it.getString("resultText")
@@ -171,6 +165,30 @@ class MainActivity : AppCompatActivity() {
         params.topMargin = binding.toolbar.height + 16
         view.layoutParams = params
         snackbar.show()
+    }
+    
+    private fun updateImageDisplay() {
+        binding.placeholderText.visibility = View.GONE
+        
+        if (selectedImageUris.size == 1) {
+            binding.imageView.visibility = View.VISIBLE
+            binding.imageViewPager.visibility = View.GONE
+            binding.imageCountText.visibility = View.GONE
+            binding.imageView.setImageURI(selectedImageUris[0])
+        } else {
+            binding.imageView.visibility = View.GONE
+            binding.imageViewPager.visibility = View.VISIBLE
+            binding.imageCountText.visibility = View.VISIBLE
+            binding.imageCountText.text = "${selectedImageUris.size} images"
+            
+            val adapter = ImagePagerAdapter(selectedImageUris)
+            binding.imageViewPager.adapter = adapter
+            binding.imageViewPager.registerOnPageChangeCallback(object : androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
+                override fun onPageSelected(position: Int) {
+                    binding.imageCountText.text = "${position + 1}/${selectedImageUris.size}"
+                }
+            })
+        }
     }
     
     private fun showBalanceNotification(apiKey: String) {

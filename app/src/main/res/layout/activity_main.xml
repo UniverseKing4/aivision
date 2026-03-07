@@ -40,12 +40,19 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent">
 
+                    <androidx.viewpager2.widget.ViewPager2
+                        android:id="@+id/imageViewPager"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone" />
+
                     <ImageView
                         android:id="@+id/imageView"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:scaleType="fitCenter"
-                        android:contentDescription="@string/select_image" />
+                        android:contentDescription="@string/select_image"
+                        android:visibility="gone" />
 
                     <TextView
                         android:id="@+id/placeholderText"
