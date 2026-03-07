@@ -41,6 +41,11 @@ class MainActivity : AppCompatActivity() {
     private var timerJob: kotlinx.coroutines.Job? = null
     private var startTime: Long = 0
     private var analysisJob: kotlinx.coroutines.Job? = null
+    private val markwon by lazy { 
+        io.noties.markwon.Markwon.builder(this)
+            .usePlugin(io.noties.markwon.linkify.LinkifyPlugin.create())
+            .build()
+    }
     
     private val pickImage = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -90,7 +95,7 @@ class MainActivity : AppCompatActivity() {
             }
             val resultText = it.getString("resultText")
             if (resultText != null) {
-                binding.resultText.text = resultText
+                markwon.setMarkdown(binding.resultText, resultText)
                 binding.resultCard.visibility = View.VISIBLE
             }
             val isAnalyzing = it.getBoolean("isAnalyzing", false)
@@ -215,7 +220,7 @@ class MainActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     binding.timerText.visibility = View.GONE
                     binding.analyzeButton.isEnabled = true
-                    binding.resultText.text = result
+                    markwon.setMarkdown(binding.resultText, result.toString())
                     binding.resultCard.visibility = View.VISIBLE
                     
                     showCompletionSnackbar()
@@ -348,7 +353,7 @@ class MainActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     binding.timerText.visibility = View.GONE
                     binding.analyzeButton.isEnabled = true
-                    binding.resultText.text = result
+                    markwon.setMarkdown(binding.resultText, result.toString())
                     binding.resultCard.visibility = View.VISIBLE
                     
                     val snackbar = com.google.android.material.snackbar.Snackbar.make(
