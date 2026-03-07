@@ -282,7 +282,8 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
                     val base64 = bitmapToBase64(bitmap)
-                    val result = callPollinationsAPI(apiKey, base64)
+                    val customPrompt = binding.promptInput.text?.toString() ?: ""
+                    val result = callPollinationsAPI(apiKey, base64, customPrompt)
                     
                     withContext(Dispatchers.Main) {
                         timerJob?.cancel()
@@ -353,11 +354,13 @@ class MainActivity : AppCompatActivity() {
         return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
     }
     
-    private fun callPollinationsAPI(apiKey: String, base64Image: String): String {
+    private fun callPollinationsAPI(apiKey: String, base64Image: String, customPrompt: String = ""): String {
         val client = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
+        
+        val prompt = customPrompt.ifEmpty { "Describe the image" }
         
         val json = JSONObject().apply {
             put("model", "openai")
@@ -367,7 +370,7 @@ class MainActivity : AppCompatActivity() {
                     put("content", JSONArray().apply {
                         put(JSONObject().apply {
                             put("type", "text")
-                            put("text", "Describe the image")
+                            put("text", prompt)
                         })
                         put(JSONObject().apply {
                             put("type", "image_url")
