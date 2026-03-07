@@ -41,10 +41,6 @@ class MainActivity : AppCompatActivity() {
     private var timerJob: kotlinx.coroutines.Job? = null
     private var startTime: Long = 0
     private var analysisJob: kotlinx.coroutines.Job? = null
-    private var showingCompletion = false
-    private var showingBalance = false
-    private var cachedBalance = ""
-    private var lastAnalysisTime: Long = 0
     
     private val pickImage = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -95,26 +91,6 @@ class MainActivity : AppCompatActivity() {
                 // Resume analysis
                 selectedImageUri?.let { uri -> resumeAnalysis(uri) }
             }
-            
-            showingCompletion = it.getBoolean("showingCompletion", false)
-            showingBalance = it.getBoolean("showingBalance", false)
-            cachedBalance = it.getString("cachedBalance", "")
-            
-            // Only show if within reasonable time window
-            val lastAnalysisTime = it.getLong("lastAnalysisTime", 0)
-            val elapsed = System.currentTimeMillis() - lastAnalysisTime
-            
-            if (elapsed < 5000) {
-                if (showingCompletion) {
-                    showCompletionSnackbar()
-                }
-                if (showingBalance && cachedBalance.isNotEmpty()) {
-                    showBalanceSnackbar(cachedBalance)
-                }
-            } else {
-                showingCompletion = false
-                showingBalance = false
-            }
         }
         
         binding.selectButton.setOnClickListener {
@@ -146,14 +122,9 @@ class MainActivity : AppCompatActivity() {
             outState.putBoolean("isAnalyzing", true)
             outState.putLong("startTime", startTime)
         }
-        outState.putBoolean("showingCompletion", showingCompletion)
-        outState.putBoolean("showingBalance", showingBalance)
-        outState.putString("cachedBalance", cachedBalance)
-        outState.putLong("lastAnalysisTime", lastAnalysisTime)
     }
     
     private fun showCompletionSnackbar() {
-        showingCompletion = true
         val snackbar = com.google.android.material.snackbar.Snackbar.make(
             binding.root,
             "✓ Analysis complete!",
@@ -168,7 +139,6 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun showBalanceSnackbar(balance: String) {
-        showingBalance = true
         val snackbar = com.google.android.material.snackbar.Snackbar.make(
             binding.root,
             "Balance: $balance",
@@ -180,18 +150,12 @@ class MainActivity : AppCompatActivity() {
         params.topMargin = binding.toolbar.height + 16
         view.layoutParams = params
         snackbar.show()
-        
-        CoroutineScope(Dispatchers.Main).launch {
-            kotlinx.coroutines.delay(3000)
-            showingBalance = false
-        }
     }
     
     private fun showBalanceNotification(apiKey: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val balance = getApiBalance(apiKey)
-                cachedBalance = balance
                 withContext(Dispatchers.Main) {
                     showBalanceSnackbar(balance)
                 }
@@ -216,11 +180,9 @@ class MainActivity : AppCompatActivity() {
                     binding.resultText.text = result
                     binding.resultCard.visibility = View.VISIBLE
                     
-                    lastAnalysisTime = System.currentTimeMillis()
                     showCompletionSnackbar()
                     
-                    kotlinx.coroutines.delay(2000)
-                    showingCompletion = false
+                    kotlinx.coroutines.delay(1500)
                     showBalanceNotification(apiKey)
                 }
             } catch (e: Exception) {
