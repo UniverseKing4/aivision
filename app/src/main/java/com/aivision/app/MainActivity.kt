@@ -391,22 +391,39 @@ class MainActivity : AppCompatActivity() {
         return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
     }
     
-    private fun analyzeMultipleImages(apiKey: String, uris: List<Uri>, customPrompt: String): String {
+    private fun analyzeMultipleImages(apiKey: String, uris: List<Uri>, customPrompt: String): android.text.Spanned {
         if (uris.size == 1) {
             val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uris[0])
             val base64 = bitmapToBase64(bitmap)
-            return callPollinationsAPI(apiKey, base64, customPrompt)
+            return android.text.SpannableString(callPollinationsAPI(apiKey, base64, customPrompt))
         }
         
-        val results = StringBuilder()
+        val results = android.text.SpannableStringBuilder()
         uris.forEachIndexed { index, uri ->
             val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
             val base64 = bitmapToBase64(bitmap)
             val prompt = if (customPrompt.isEmpty()) "Describe the image" else customPrompt
             val result = callPollinationsAPI(apiKey, base64, prompt)
-            results.append("━━━ IMAGE ${index + 1} ━━━\n$result\n\n")
+            
+            val header = "━━━ IMAGE ${index + 1} ━━━\n"
+            val start = results.length
+            results.append(header)
+            results.setSpan(
+                android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                start,
+                start + header.length - 1,
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            results.setSpan(
+                android.text.style.RelativeSizeSpan(1.2f),
+                start,
+                start + header.length - 1,
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            results.append(result)
+            results.append("\n\n")
         }
-        return results.toString().trim()
+        return results
     }
     
     private fun callPollinationsAPI(apiKey: String, base64Image: String, customPrompt: String = ""): String {
