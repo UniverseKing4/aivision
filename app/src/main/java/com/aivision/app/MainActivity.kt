@@ -44,6 +44,7 @@ class MainActivity : AppCompatActivity() {
     private var showingCompletion = false
     private var showingBalance = false
     private var cachedBalance = ""
+    private var lastAnalysisTime: Long = 0
     
     private val pickImage = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -99,11 +100,20 @@ class MainActivity : AppCompatActivity() {
             showingBalance = it.getBoolean("showingBalance", false)
             cachedBalance = it.getString("cachedBalance", "")
             
-            if (showingCompletion) {
-                showCompletionSnackbar()
-            }
-            if (showingBalance && cachedBalance.isNotEmpty()) {
-                showBalanceSnackbar(cachedBalance)
+            // Only show if within reasonable time window
+            val lastAnalysisTime = it.getLong("lastAnalysisTime", 0)
+            val elapsed = System.currentTimeMillis() - lastAnalysisTime
+            
+            if (elapsed < 5000) {
+                if (showingCompletion) {
+                    showCompletionSnackbar()
+                }
+                if (showingBalance && cachedBalance.isNotEmpty()) {
+                    showBalanceSnackbar(cachedBalance)
+                }
+            } else {
+                showingCompletion = false
+                showingBalance = false
             }
         }
         
@@ -139,6 +149,7 @@ class MainActivity : AppCompatActivity() {
         outState.putBoolean("showingCompletion", showingCompletion)
         outState.putBoolean("showingBalance", showingBalance)
         outState.putString("cachedBalance", cachedBalance)
+        outState.putLong("lastAnalysisTime", lastAnalysisTime)
     }
     
     private fun showCompletionSnackbar() {
@@ -205,6 +216,7 @@ class MainActivity : AppCompatActivity() {
                     binding.resultText.text = result
                     binding.resultCard.visibility = View.VISIBLE
                     
+                    lastAnalysisTime = System.currentTimeMillis()
                     showCompletionSnackbar()
                     
                     kotlinx.coroutines.delay(2000)
