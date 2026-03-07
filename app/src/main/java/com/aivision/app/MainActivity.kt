@@ -295,7 +295,7 @@ class MainActivity : AppCompatActivity() {
             .build()
         
         val request = Request.Builder()
-            .url("https://gen.pollinations.ai/v1/models")
+            .url("https://gen.pollinations.ai/account/balance")
             .addHeader("Authorization", "Bearer $apiKey")
             .get()
             .build()
@@ -304,10 +304,8 @@ class MainActivity : AppCompatActivity() {
             if (!response.isSuccessful) return "Unknown"
             val body = response.body?.string() ?: return "Unknown"
             val jsonResponse = JSONObject(body)
-            
-            // Try to extract balance info if available in response headers or body
-            val balance = response.header("X-Balance") ?: response.header("X-Credits-Remaining")
-            return if (balance != null) "$balance credits" else "Active"
+            val balance = jsonResponse.optDouble("balance", -1.0)
+            return if (balance >= 0) "$balance Pollen" else "Active"
         }
     }
 }
