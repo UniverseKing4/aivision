@@ -37,6 +37,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var selectedImageUri: Uri? = null
     private val prefs by lazy { getSharedPreferences("app_prefs", MODE_PRIVATE) }
+    private var timerJob: kotlinx.coroutines.Job? = null
+    private var startTime: Long = 0
     
     private val pickImage = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -161,8 +163,12 @@ class MainActivity : AppCompatActivity() {
         
         selectedImageUri?.let { uri ->
             binding.progressBar.visibility = View.VISIBLE
+            binding.timerText.visibility = View.VISIBLE
             binding.analyzeButton.isEnabled = false
             binding.resultCard.visibility = View.GONE
+            
+            startTime = System.currentTimeMillis()
+            startTimer()
             
             CoroutineScope(Dispatchers.IO).launch {
                 try {
@@ -171,18 +177,44 @@ class MainActivity : AppCompatActivity() {
                     val result = callPollinationsAPI(apiKey, base64)
                     
                     withContext(Dispatchers.Main) {
+                        timerJob?.cancel()
                         binding.progressBar.visibility = View.GONE
+                        binding.timerText.visibility = View.GONE
                         binding.analyzeButton.isEnabled = true
                         binding.resultText.text = result
                         binding.resultCard.visibility = View.VISIBLE
+                        Toast.makeText(this@MainActivity, "Analysis complete!", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
+                        timerJob?.cancel()
                         binding.progressBar.visibility = View.GONE
+                        binding.timerText.visibility = View.GONE
                         binding.analyzeButton.isEnabled = true
                         Toast.makeText(this@MainActivity, "${getString(R.string.error_occurred)}: ${e.message}", Toast.LENGTH_LONG).show()
                     }
                 }
+            }
+        }
+    }
+    
+    private fun startTimer() {
+        timerJob = CoroutineScope(Dispatchers.Main).launch {
+            while (true) {
+                val elapsed = (System.currentTimeMillis() - startTime) / 1000.0
+                binding.timerText.text = formatTime(elapsed)
+                kotlinx.coroutines.delay(100)
+            }
+        }
+    }
+    
+    private fun formatTime(seconds: Double): String {
+        return when {
+            seconds < 60 -> String.format("%.1fs", seconds)
+            else -> {
+                val mins = (seconds / 60).toInt()
+                val secs = seconds % 60
+                String.format("%dm %.1fs", mins, secs)
             }
         }
     }
