@@ -242,6 +242,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_model -> {
+                showModelSelectionDialog()
+                true
+            }
             R.id.action_dark_mode -> {
                 toggleDarkMode()
                 invalidateOptionsMenu()
@@ -298,6 +302,22 @@ class MainActivity : AppCompatActivity() {
         
         dialogBinding.cancelButton.setOnClickListener { dialog.dismiss() }
         dialog.show()
+    }
+    
+    private fun showModelSelectionDialog() {
+        val models = arrayOf("openai", "gemini-flash", "flux")
+        val currentModel = prefs.getString("model", "openai")
+        val selectedIndex = models.indexOf(currentModel)
+        
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Select Model")
+            .setSingleChoiceItems(models, selectedIndex) { dialog, which ->
+                prefs.edit().putString("model", models[which]).apply()
+                Toast.makeText(this, "Model: ${models[which]}", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
     
     private fun analyzeImage() {
@@ -433,9 +453,10 @@ class MainActivity : AppCompatActivity() {
             .build()
         
         val prompt = customPrompt.ifEmpty { "Describe the image" }
+        val model = prefs.getString("model", "openai") ?: "openai"
         
         val json = JSONObject().apply {
-            put("model", "openai")
+            put("model", model)
             put("messages", JSONArray().apply {
                 put(JSONObject().apply {
                     put("role", "user")
