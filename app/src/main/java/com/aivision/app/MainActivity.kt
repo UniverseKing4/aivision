@@ -386,7 +386,7 @@ class MainActivity : AppCompatActivity() {
             val base64 = bitmapToBase64(bitmap)
             val prompt = if (customPrompt.isEmpty()) "Describe the image" else customPrompt
             val result = callPollinationsAPI(apiKey, base64, prompt)
-            results.append("Image ${index + 1}:\n$result\n\n")
+            results.append("━━━ IMAGE ${index + 1} ━━━\n$result\n\n")
         }
         return results.toString().trim()
     }

@@ -166,7 +166,7 @@
                         android:textColor="@color/text_secondary"
                         android:textSize="15sp"
                         android:lineSpacingExtra="4dp"
-                        android:fontFamily="sans-serif" />
+                        android:fontFamily="sans-serif-medium" />
 
                 </LinearLayout>
 
