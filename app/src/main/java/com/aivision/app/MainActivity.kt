@@ -55,6 +55,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val isDark = prefs.getBoolean("dark_mode", false)
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+            if (isDark) androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES 
+            else androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+        )
+        
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
@@ -108,13 +115,16 @@ class MainActivity : AppCompatActivity() {
     
     private fun toggleDarkMode() {
         val currentMode = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-        val newMode = if (currentMode == android.content.res.Configuration.UI_MODE_NIGHT_YES) {
-            android.app.UiModeManager.MODE_NIGHT_NO
+        val isDark = currentMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        
+        prefs.edit().putBoolean("dark_mode", !isDark).apply()
+        
+        val newMode = if (isDark) {
+            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
         } else {
-            android.app.UiModeManager.MODE_NIGHT_YES
+            androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
         }
-        val uiModeManager = getSystemService(android.content.Context.UI_MODE_SERVICE) as android.app.UiModeManager
-        uiModeManager.setApplicationNightMode(newMode)
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(newMode)
     }
     
     private fun selectImage() {
