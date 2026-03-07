@@ -66,6 +66,22 @@ class MainActivity : AppCompatActivity() {
         // Set proper background after splash
         window.setBackgroundDrawableResource(R.color.background)
         
+        // Restore state
+        savedInstanceState?.let {
+            val imageUriString = it.getString("imageUri")
+            if (imageUriString != null) {
+                selectedImageUri = Uri.parse(imageUriString)
+                binding.imageView.setImageURI(selectedImageUri)
+                binding.placeholderText.visibility = View.GONE
+                binding.analyzeButton.isEnabled = true
+            }
+            val resultText = it.getString("resultText")
+            if (resultText != null) {
+                binding.resultText.text = resultText
+                binding.resultCard.visibility = View.VISIBLE
+            }
+        }
+        
         binding.selectButton.setOnClickListener {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED ||
                 ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
@@ -82,6 +98,14 @@ class MainActivity : AppCompatActivity() {
             val clip = android.content.ClipData.newPlainText("AI Analysis", binding.resultText.text)
             clipboard.setPrimaryClip(clip)
             Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    override fun onSaveInstanceState(outState: android.os.Bundle) {
+        super.onSaveInstanceState(outState)
+        selectedImageUri?.let { outState.putString("imageUri", it.toString()) }
+        if (binding.resultCard.visibility == View.VISIBLE) {
+            outState.putString("resultText", binding.resultText.text.toString())
         }
     }
 
@@ -181,17 +205,26 @@ class MainActivity : AppCompatActivity() {
                         binding.resultText.text = result
                         binding.resultCard.visibility = View.VISIBLE
                         
+                        // Show completion snackbar
+                        com.google.android.material.snackbar.Snackbar.make(
+                            binding.root,
+                            "✓ Analysis complete!",
+                            com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                        ).show()
+                        
                         // Get API balance
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
                                 val balance = getApiBalance(apiKey)
                                 withContext(Dispatchers.Main) {
-                                    Toast.makeText(this@MainActivity, "Analysis complete! Balance: $balance", Toast.LENGTH_LONG).show()
+                                    com.google.android.material.snackbar.Snackbar.make(
+                                        binding.root,
+                                        "Balance: $balance",
+                                        com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                                    ).show()
                                 }
                             } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(this@MainActivity, "Analysis complete!", Toast.LENGTH_SHORT).show()
-                                }
+                                // Ignore balance errors
                             }
                         }
                     }
