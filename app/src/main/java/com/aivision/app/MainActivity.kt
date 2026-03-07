@@ -56,14 +56,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
         val isDark = prefs.getBoolean("dark_mode", false)
         androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
             if (isDark) androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES 
             else androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
         )
         
+        super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
@@ -183,7 +182,20 @@ class MainActivity : AppCompatActivity() {
                         binding.analyzeButton.isEnabled = true
                         binding.resultText.text = result
                         binding.resultCard.visibility = View.VISIBLE
-                        Toast.makeText(this@MainActivity, "Analysis complete!", Toast.LENGTH_SHORT).show()
+                        
+                        // Get API balance
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val balance = getApiBalance(apiKey)
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(this@MainActivity, "Analysis complete! Balance: $balance", Toast.LENGTH_LONG).show()
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(this@MainActivity, "Analysis complete!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
@@ -273,6 +285,29 @@ class MainActivity : AppCompatActivity() {
                 .getJSONObject(0)
                 .getJSONObject("message")
                 .getString("content")
+        }
+    }
+    
+    private fun getApiBalance(apiKey: String): String {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .build()
+        
+        val request = Request.Builder()
+            .url("https://gen.pollinations.ai/v1/models")
+            .addHeader("Authorization", "Bearer $apiKey")
+            .get()
+            .build()
+        
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return "Unknown"
+            val body = response.body?.string() ?: return "Unknown"
+            val jsonResponse = JSONObject(body)
+            
+            // Try to extract balance info if available in response headers or body
+            val balance = response.header("X-Balance") ?: response.header("X-Credits-Remaining")
+            return if (balance != null) "$balance credits" else "Active"
         }
     }
 }
