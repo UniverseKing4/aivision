@@ -128,6 +128,28 @@ class MainActivity : AppCompatActivity() {
             clipboard.setPrimaryClip(clip)
             Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
         }
+        
+        var clearClickCount = 0
+        binding.promptInputLayout.setEndIconOnClickListener {
+            if (clearClickCount == 0) {
+                clearClickCount = 1
+                Toast.makeText(this, "Clear prompt?", Toast.LENGTH_SHORT).show()
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    clearClickCount = 0
+                }, 3000)
+            } else {
+                binding.promptInput.text?.clear()
+                clearClickCount = 0
+            }
+        }
+        
+        binding.promptInput.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                binding.promptInputLayout.isEndIconVisible = !s.isNullOrEmpty()
+            }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
     }
     
     override fun onSaveInstanceState(outState: android.os.Bundle) {
