@@ -5,13 +5,14 @@ Modern Android app for AI-powered image analysis using Pollinations API.
 ## Features
 
 ### Core Functionality
-- 🖼️ **Single & Multiple Image Analysis** - Analyze one or multiple images at once
+- 🖼️ **Single & Multiple Image Analysis** - Analyze one or multiple images at once with parallel processing
 - 🤖 **Multiple AI Models** - Choose from OpenAI, Gemini Flash, Claude Fast, Kimi, or Polly
 - ✍️ **Custom Prompts** - Add your own prompts for tailored analysis
 - 🎨 **Material Design 3** - Clean, modern UI with light/dark theme support
 - 📋 **Copy Results** - One-tap copy to clipboard
-- ⏱️ **Real-time Timer** - See analysis duration
-- 🛑 **Stop Analysis** - Cancel ongoing analysis anytime
+- ⏱️ **Real-time Timer** - See analysis duration with live updates
+- 🛑 **Stop Analysis** - Cancel ongoing analysis anytime with visual feedback
+- 🔄 **State Preservation** - Resume analysis after app restart or configuration changes
 
 ### API Options
 - 🆓 **Default API** - Works out of the box, no setup required
@@ -43,19 +44,22 @@ Modern Android app for AI-powered image analysis using Pollinations API.
 1. Get your API key from [Pollinations AI](https://enter.pollinations.ai)
 2. Open the app and tap the **settings icon** (⚙️)
 3. Tap **"Get your own API key →"** or enter your key directly
-4. Tap **Save**
-5. Select images and analyze with unlimited usage
+4. Use the **clear button** (X) to remove existing keys if needed
+5. Tap **Save**
+6. Select images and analyze with unlimited usage
 
 ## Usage
 
 ### Analyzing Images
 1. Tap **"Select Image"** to choose from gallery
-2. Select single or multiple images
+2. Select single or multiple images (supports batch selection)
 3. (Optional) Enter a custom prompt like "Describe in detail" or "What objects are visible?"
-4. Tap **"Analyze"** to start
-5. Tap **"Stop"** to cancel if needed
-6. View results with markdown formatting
+4. Tap **"Analyze"** to start (button turns red and shows "Stop")
+5. Tap **"Stop"** to cancel analysis if needed
+6. View results with markdown formatting and bold headers for multiple images
 7. Tap **copy icon** to copy results to clipboard
+
+**Note:** Multiple images are processed in parallel for faster results.
 
 ### Switching Models
 1. Tap the **model icon** in the toolbar
