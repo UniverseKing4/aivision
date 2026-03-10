@@ -23,6 +23,8 @@ import com.aivision.app.databinding.DialogApiKeyBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -498,34 +500,32 @@ class MainActivity : AppCompatActivity() {
         return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
     }
     
-    private suspend fun analyzeMultipleImages(apiKey: String, uris: List<Uri>, customPrompt: String): String {
+    private suspend fun analyzeMultipleImages(apiKey: String, uris: List<Uri>, customPrompt: String): String = withContext(Dispatchers.IO) {
         if (uris.size == 1) {
             val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uris[0])
             val base64 = bitmapToBase64(bitmap)
-            return callPollinationsAPI(apiKey, base64, customPrompt)
+            return@withContext callPollinationsAPI(apiKey, base64, customPrompt)
         }
         
         // Process all images in parallel
         val results = uris.mapIndexed { index, uri ->
-            kotlinx.coroutines.async(kotlinx.coroutines.Dispatchers.IO) {
+            async {
                 val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
                 val base64 = bitmapToBase64(bitmap)
                 val prompt = if (customPrompt.isEmpty()) "Describe the image" else customPrompt
                 val result = callPollinationsAPI(apiKey, base64, prompt)
                 Pair(index, result)
             }
-        }
-        
-        val completedResults = results.map { it.await() }
+        }.awaitAll()
         
         // Build formatted output
         val output = StringBuilder()
-        completedResults.sortedBy { it.first }.forEach { (index, result) ->
+        results.sortedBy { it.first }.forEach { (index, result) ->
             output.append("**━━━ IMAGE ${index + 1} ━━━**\n\n")
             output.append(result)
             output.append("\n\n")
         }
-        return output.toString()
+        return@withContext output.toString()
     }
     
     private fun callPollinationsAPI(apiKey: String, base64Image: String, customPrompt: String = ""): String {
