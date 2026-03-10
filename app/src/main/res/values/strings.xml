@@ -3,7 +3,7 @@
     <string name="app_name">AI Vision</string>
     <string name="select_image">Select Image</string>
     <string name="analyze">Analyze</string>
-    <string name="api_key">API Key</string>
+    <string name="api_key">API Key (Optional)</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="settings">Settings</string>

@@ -35,6 +35,10 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
+    companion object {
+        private const val PROXY_URL = "https://aivision-proxy.universeking.workers.dev"
+    }
+    
     private lateinit var binding: ActivityMainBinding
     private var selectedImageUris: MutableList<Uri> = mutableListOf()
     private val prefs by lazy { getSharedPreferences("app_prefs", MODE_PRIVATE) }
@@ -349,12 +353,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun analyzeImage() {
-        val apiKey = prefs.getString("api_key", "")
-        if (apiKey.isNullOrEmpty()) {
-            Toast.makeText(this, getString(R.string.api_key_required), Toast.LENGTH_SHORT).show()
-            showApiKeyDialog()
-            return
-        }
+        val apiKey = prefs.getString("api_key", "") ?: ""
         
         if (selectedImageUris.isEmpty()) return
         
@@ -490,14 +489,20 @@ class MainActivity : AppCompatActivity() {
             })
         }
         
-        val request = Request.Builder()
-            .url("https://gen.pollinations.ai/v1/chat/completions")
-            .addHeader("Authorization", "Bearer $apiKey")
+        // Use proxy if no API key provided, otherwise use direct API
+        val url = if (apiKey.isEmpty()) PROXY_URL else "https://gen.pollinations.ai/v1/chat/completions"
+        
+        val requestBuilder = Request.Builder()
+            .url(url)
             .addHeader("Content-Type", "application/json")
             .post(json.toString().toRequestBody("application/json".toMediaType()))
-            .build()
         
-        client.newCall(request).execute().use { response ->
+        // Only add Authorization header if using user's API key
+        if (apiKey.isNotEmpty()) {
+            requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+        }
+        
+        client.newCall(requestBuilder.build()).execute().use { response ->
             if (!response.isSuccessful) throw Exception("API error: ${response.code}")
             val body = response.body?.string() ?: throw Exception("Empty response")
             val jsonResponse = JSONObject(body)
@@ -509,6 +514,9 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun getApiBalance(apiKey: String): String {
+        // Skip balance check if using default proxy
+        if (apiKey.isEmpty()) return "Using default API"
+        
         val client = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
