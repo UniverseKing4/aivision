@@ -322,14 +322,17 @@ class MainActivity : AppCompatActivity() {
     
     private fun showApiKeyDialog() {
         val dialogBinding = DialogApiKeyBinding.inflate(layoutInflater)
-        dialogBinding.apiKeyInput.setText(prefs.getString("api_key", ""))
+        val savedKey = prefs.getString("api_key", "") ?: ""
+        dialogBinding.apiKeyInput.setText(savedKey)
         
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogBinding.root)
             .create()
         
-        // Handle clear button
-        dialogBinding.apiKeyInputLayout.isEndIconVisible = false
+        // Show clear button if there's existing text
+        dialogBinding.apiKeyInputLayout.isEndIconVisible = savedKey.isNotEmpty()
+        
+        // Handle clear button visibility
         dialogBinding.apiKeyInput.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
