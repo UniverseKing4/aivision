@@ -512,13 +512,15 @@ class MainActivity : AppCompatActivity() {
                 val base64 = bitmapToBase64(bitmap)
                 val prompt = if (customPrompt.isEmpty()) "Describe the image" else customPrompt
                 val result = callPollinationsAPI(apiKey, base64, prompt)
-                index to result
+                Pair(index, result)
             }
-        }.awaitAll()
+        }
+        
+        val completedResults = results.map { it.await() }
         
         // Build formatted output
         val output = StringBuilder()
-        results.sortedBy { it.first }.forEach { (index, result) ->
+        completedResults.sortedBy { it.first }.forEach { (index, result) ->
             output.append("**━━━ IMAGE ${index + 1} ━━━**\n\n")
             output.append(result)
             output.append("\n\n")
