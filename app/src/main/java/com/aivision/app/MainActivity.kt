@@ -273,7 +273,6 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     resetToIdleState()
                 }
-                }
             }
         }
     }
