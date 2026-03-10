@@ -25,6 +25,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -255,6 +256,7 @@ class MainActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     binding.timerText.visibility = View.GONE
                     binding.analyzeButton.text = getString(R.string.analyze)
+                    binding.analyzeButton.background = null // Reset to default background
                     binding.analyzeButton.isEnabled = true
                     markwon.setMarkdown(binding.resultText, result)
                     binding.resultCard.visibility = View.VISIBLE
@@ -273,6 +275,7 @@ class MainActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     binding.timerText.visibility = View.GONE
                     binding.analyzeButton.text = getString(R.string.analyze)
+                    binding.analyzeButton.background = null // Reset to default background
                     binding.analyzeButton.isEnabled = true
                 }
             }
@@ -388,6 +391,7 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = View.GONE
         binding.timerText.visibility = View.GONE
         binding.analyzeButton.text = getString(R.string.analyze)
+        binding.analyzeButton.background = null // Reset to default background
         binding.analyzeButton.isEnabled = true
         Toast.makeText(this, "Analysis stopped", Toast.LENGTH_SHORT).show()
     }
@@ -416,6 +420,7 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = View.VISIBLE
         binding.timerText.visibility = View.VISIBLE
         binding.analyzeButton.text = "Stop"
+        binding.analyzeButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
         binding.analyzeButton.isEnabled = true
         binding.resultCard.visibility = View.GONE
         
@@ -432,6 +437,7 @@ class MainActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     binding.timerText.visibility = View.GONE
                     binding.analyzeButton.text = getString(R.string.analyze)
+                    binding.analyzeButton.background = null // Reset to default background
                     binding.analyzeButton.isEnabled = true
                     markwon.setMarkdown(binding.resultText, result)
                     binding.resultCard.visibility = View.VISIBLE
@@ -460,6 +466,7 @@ class MainActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     binding.timerText.visibility = View.GONE
                     binding.analyzeButton.text = getString(R.string.analyze)
+                    binding.analyzeButton.background = null // Reset to default background
                     binding.analyzeButton.isEnabled = true
                     Toast.makeText(this@MainActivity, "${getString(R.string.error_occurred)}: ${e.message}", Toast.LENGTH_LONG).show()
                 }
@@ -508,7 +515,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         // Process all images in parallel
-        val results = uris.mapIndexed { index, uri ->
+        val jobs = uris.mapIndexed { index, uri ->
             async {
                 val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
                 val base64 = bitmapToBase64(bitmap)
@@ -516,16 +523,24 @@ class MainActivity : AppCompatActivity() {
                 val result = callPollinationsAPI(apiKey, base64, prompt)
                 Pair(index, result)
             }
-        }.awaitAll()
-        
-        // Build formatted output
-        val output = StringBuilder()
-        results.sortedBy { it.first }.forEach { (index, result) ->
-            output.append("**━━━ IMAGE ${index + 1} ━━━**\n\n")
-            output.append(result)
-            output.append("\n\n")
         }
-        return@withContext output.toString()
+        
+        // Check for cancellation and cancel all jobs if needed
+        try {
+            val results = jobs.awaitAll()
+            
+            // Build formatted output
+            val output = StringBuilder()
+            results.sortedBy { it.first }.forEach { (index, result) ->
+                output.append("**━━━ IMAGE ${index + 1} ━━━**\n\n")
+                output.append(result)
+                output.append("\n\n")
+            }
+            return@withContext output.toString()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            jobs.forEach { it.cancel() }
+            throw e
+        }
     }
     
     private fun callPollinationsAPI(apiKey: String, base64Image: String, customPrompt: String = ""): String {
