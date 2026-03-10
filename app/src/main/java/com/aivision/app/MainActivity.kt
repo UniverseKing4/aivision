@@ -498,25 +498,32 @@ class MainActivity : AppCompatActivity() {
         return Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
     }
     
-    private fun analyzeMultipleImages(apiKey: String, uris: List<Uri>, customPrompt: String): String {
+    private suspend fun analyzeMultipleImages(apiKey: String, uris: List<Uri>, customPrompt: String): String {
         if (uris.size == 1) {
             val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uris[0])
             val base64 = bitmapToBase64(bitmap)
             return callPollinationsAPI(apiKey, base64, customPrompt)
         }
         
-        val results = StringBuilder()
-        uris.forEachIndexed { index, uri ->
-            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
-            val base64 = bitmapToBase64(bitmap)
-            val prompt = if (customPrompt.isEmpty()) "Describe the image" else customPrompt
-            val result = callPollinationsAPI(apiKey, base64, prompt)
-            
-            results.append("**━━━ IMAGE ${index + 1} ━━━**\n\n")
-            results.append(result)
-            results.append("\n\n")
+        // Process all images in parallel
+        val results = uris.mapIndexed { index, uri ->
+            kotlinx.coroutines.async(kotlinx.coroutines.Dispatchers.IO) {
+                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
+                val base64 = bitmapToBase64(bitmap)
+                val prompt = if (customPrompt.isEmpty()) "Describe the image" else customPrompt
+                val result = callPollinationsAPI(apiKey, base64, prompt)
+                index to result
+            }
+        }.awaitAll()
+        
+        // Build formatted output
+        val output = StringBuilder()
+        results.sortedBy { it.first }.forEach { (index, result) ->
+            output.append("**━━━ IMAGE ${index + 1} ━━━**\n\n")
+            output.append(result)
+            output.append("\n\n")
         }
-        return results.toString()
+        return output.toString()
     }
     
     private fun callPollinationsAPI(apiKey: String, base64Image: String, customPrompt: String = ""): String {
