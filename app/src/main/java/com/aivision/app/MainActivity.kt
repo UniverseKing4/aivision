@@ -458,10 +458,9 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = View.VISIBLE
         binding.timerText.visibility = View.VISIBLE
         binding.analyzeButton.text = "Stop"
-        // Use ColorFilter to tint the button red while preserving Material Design styling
-        binding.analyzeButton.background.setColorFilter(
-            ContextCompat.getColor(this, android.R.color.holo_red_light),
-            android.graphics.PorterDuff.Mode.MULTIPLY
+        // Use backgroundTint to change color while preserving Material Design styling
+        binding.analyzeButton.backgroundTintList = android.content.res.ColorStateList.valueOf(
+            ContextCompat.getColor(this, android.R.color.holo_red_light)
         )
         binding.analyzeButton.isEnabled = true
         binding.resultCard.visibility = View.GONE
@@ -472,8 +471,8 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = View.GONE
         binding.timerText.visibility = View.GONE
         binding.analyzeButton.text = getString(R.string.analyze)
-        // Clear the color filter to restore original appearance
-        binding.analyzeButton.background.clearColorFilter()
+        // Reset to default Material Design tint
+        binding.analyzeButton.backgroundTintList = null
         binding.analyzeButton.isEnabled = selectedImageUris.isNotEmpty()
     }
     
