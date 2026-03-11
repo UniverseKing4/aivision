@@ -16,3 +16,5 @@ gen/
 out/
 .DS_Store
 chat
+*.keystore
+worker/.wrangler/
