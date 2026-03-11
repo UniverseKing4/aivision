@@ -3,6 +3,8 @@ name: Android Build
 on:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
   pull_request:
 
 permissions:
@@ -24,12 +26,17 @@ jobs:
       - name: Get and increment version
         id: version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          VERSION=${LATEST_TAG#v}
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          PATCH=$((PATCH + 1))
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          echo "number=$NEW_VERSION" >> $GITHUB_OUTPUT
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "number=$VERSION" >> $GITHUB_OUTPUT
+          else
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            VERSION=${LATEST_TAG#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            PATCH=$((PATCH + 1))
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+            echo "number=$NEW_VERSION" >> $GITHUB_OUTPUT
+          fi
           
       - name: Build APK
         run: ./gradlew assembleRelease
@@ -46,7 +53,7 @@ jobs:
           path: app/build/outputs/apk/release/AIVision-*.apk
 
       - uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         with:
           files: app/build/outputs/apk/release/AIVision-*.apk
           tag_name: v${{ steps.version.outputs.number }}
