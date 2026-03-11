@@ -21,15 +21,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       
-      - name: Get and increment version
+      - name: Get version
         id: version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
           VERSION=${LATEST_TAG#v}
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          PATCH=$((PATCH + 1))
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          echo "number=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "number=$VERSION" >> $GITHUB_OUTPUT
           
       - name: Build APK
         run: ./gradlew assembleRelease
