@@ -18,3 +18,5 @@ out/
 save
 *.keystore
 worker/.wrangler/
+monitor.sh
+save
